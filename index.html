@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mediapipe Pose Driver v2.0</title>
+    <title>Mediapipe Pose Driver v2.0 - RETRO</title>
+    <!-- Google Font: Press Start 2P -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <!-- Mediapipe JS -->
@@ -13,102 +17,109 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
     <style>
-        /* Estilos CSS */
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        body { display: flex; flex-direction: column; padding-top: 1rem; background-color: #212529; }
-        h1 { text-align: center; margin-bottom: 0; color: #f8f9fa; } /* Ajustado margin */
+        :root {
+            --retro-bg: #0a0a1f; --retro-border: #00ffff; --retro-text: #ffff00; --retro-text-alt: #ff00ff;
+            --retro-text-scores: #ffffff; --retro-highlight-bg: rgba(0, 255, 255, 0.15); --retro-highlight-text: #00ffff;
+            --retro-glow: 0 0 5px var(--retro-border), 0 0 10px var(--retro-border);
+            --retro-glow-text: 0 0 3px var(--retro-text), 0 0 6px var(--retro-text);
+            --retro-glow-text-alt: 0 0 3px var(--retro-text-alt), 0 0 6px var(--retro-text-alt);
+        }
+        body, html { font-family: 'Press Start 2P', cursive; background-color: var(--retro-bg); color: var(--retro-text); height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        h1 { color: var(--retro-text-alt); text-shadow: var(--retro-glow-text-alt); font-size: 1.8rem; }
+        body { display: flex; flex-direction: column; padding-top: 0.5rem; }
         .main-container { flex-grow: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 15px; }
-        .game-row { height: calc(100% - 60px); /* Ajustar si el header cambia altura */ min-height: 480px; }
-        .game-panel, .webcam-panel { height: 100%; display: flex; justify-content: center; align-items: center; padding: 10px; }
-        #gameCanvas { border: 1px solid #6c757d; background-color: #343a40; display: block; max-width: 100%; max-height: 100%; /* Asegurar que no se desborde en modo normal */ }
-        #webcam-container { position: relative; width: 100%; max-width: 640px; aspect-ratio: 640 / 480; border: 1px solid #6c757d; overflow: hidden; background-color: #111; }
+        .game-row { height: calc(100% - 50px); min-height: 480px; }
+        .game-panel, .webcam-panel { height: 100%; display: flex; justify-content: center; align-items: center; padding: 5px; }
+        #gameCanvas { border: 2px solid var(--retro-border); box-shadow: var(--retro-glow); background-color: #111; display: block; max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+        #webcam-container { position: relative; width: 100%; max-width: 640px; aspect-ratio: 640 / 480; border: 2px solid var(--retro-border); box-shadow: var(--retro-glow); overflow: hidden; background-color: #000; }
         #input_video { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; transform: scaleX(-1); -webkit-transform: scaleX(-1); }
         #poseCanvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background-color: transparent; }
-        .loading { display: flex; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(33, 37, 41, 0.9); z-index: 1000; font-size: 1.5rem; color: #dee2e6; }
-        /* Game Over necesita position:absolute o fixed; se gestiona en JS */
-        .game-over-screen { background-color: rgba(0, 0, 0, 0.75); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 2rem; text-align: center; z-index: 10; /* display: none inicial */ }
-
-
-       /* --- NUEVO: Estilos para Pantalla Completa --- */
-       body.fullscreen-active {
-           padding-top: 0 !important; width: 100%; height: 100%;
-       }
-       body.fullscreen-active .main-container {
-           max-width: none; padding: 0; height: 100%;
-       }
-        body.fullscreen-active .game-row {
-           height: 100%;
-       }
-       body.fullscreen-active .game-panel {
-            flex-grow: 1; width: 100%; height: 100%; padding: 0;
-            display: flex; justify-content: center; align-items: center;
-       }
-       body.fullscreen-active #gameCanvas {
-            display: block;
-            /* El navegador escala el elemento en fullscreen, podemos forzar tamaño si es necesario */
-             width: 100%; /* Forzar ancho */
-             height: 100%; /* Forzar alto */
-             object-fit: contain; /* Mantener aspect ratio si el canvas y la pantalla difieren */
-             border: none; /* Quitar borde en fullscreen */
-       }
-       /* Ocultar el panel original de la webcam */
-       body.fullscreen-active .webcam-panel {
-           display: none;
-       }
-       /* Posicionar y redimensionar el contenedor de la webcam como overlay */
-       body.fullscreen-active #webcam-container {
-           position: fixed; top: 15px; right: 15px;
-           width: 160px; height: 120px;
-           z-index: 50;
-           border: 2px solid rgba(0, 255, 255, 0.7);
-           background-color: rgba(0, 0, 0, 0.5);
-           max-width: none; aspect-ratio: auto; margin: 0; padding: 0;
-           overflow: hidden; /* Asegurar que video/canvas no se salgan */
-       }
-       /* Asegurar que el video y el canvas de pose llenen el contenedor redimensionado */
-       body.fullscreen-active #webcam-container #input_video,
-       body.fullscreen-active #webcam-container #poseCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-       }
-       body.fullscreen-active #webcam-container #poseCanvas {
-           z-index: 51; /* Encima del video */
-           background-color: transparent !important; /* Forzar transparencia */
-       }
-       /* Ocultar el botón y el título en pantalla completa */
-       body.fullscreen-active > .d-flex {
-           display: none !important;
-       }
-       /* Ajustar Game Over para fullscreen */
-       body.fullscreen-active .game-over-screen {
-           position: fixed; /* Usar fixed para overlay sobre elemento fullscreen */
-       }
-
+        .loading { display: flex; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(10, 10, 31, 0.95); z-index: 1060; font-size: 1.5rem; color: var(--retro-text-alt); text-shadow: var(--retro-glow-text-alt); }
+        .modal-backdrop { background-color: rgba(0,0,0, 0.8); z-index: 1040; }
+        #highScoreModal { z-index: 1050; }
+        #highScoreModal .modal-content { background-color: var(--retro-bg); border: 3px solid var(--retro-border); box-shadow: var(--retro-glow), 0 0 20px rgba(0, 255, 255, 0.5) inset; color: var(--retro-text); font-family: 'Press Start 2P', cursive; border-radius: 0; }
+        #highScoreModal .modal-header { border-bottom: 2px solid var(--retro-border); text-align: center; justify-content: center; }
+        #highScoreModal .modal-title { color: var(--retro-text-alt); text-shadow: var(--retro-glow-text-alt); font-size: 1.5rem; }
+        #highScoreModal .btn-close { filter: invert(1) brightness(1.5) sepia(1) hue-rotate(180deg); background-size: 1em; }
+        #highScoreModal .modal-body { padding: 1rem 1.5rem; }
+        #highScoreModal #highScoreList { list-style-type: none; padding-left: 0; font-size: 0.9rem; line-height: 1.6; max-height: 50vh; overflow-y: auto; color: var(--retro-text-scores); }
+        #highScoreModal #highScoreList li { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px dashed rgba(0, 255, 255, 0.3); padding: 0.3rem 0.5rem; transition: background-color 0.3s; }
+        #highScoreModal #highScoreList li span:first-child { flex-basis: 10%; text-align: right; margin-right: 10px; color: var(--retro-text-alt); }
+        #highScoreModal #highScoreList li span:nth-child(2) { flex-basis: 30%; text-align: right; margin-right: 10px; }
+        #highScoreModal #highScoreList li span:last-child { flex-basis: 60%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--retro-text); }
+        #highScoreModal #highScoreList li.highlighted-entry { background-color: var(--retro-highlight-bg); border: 1px solid var(--retro-highlight-text); }
+        #highScoreModal #highScoreList li.highlighted-entry span { color: var(--retro-highlight-text) !important; font-weight: bold; }
+        #highScoreModal .modal-footer { border-top: 2px solid var(--retro-border); justify-content: center; }
+        .btn-retro { font-family: 'Press Start 2P', cursive; background-color: var(--retro-text-alt); color: var(--retro-bg); border: 2px solid var(--retro-text); padding: 10px 20px; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease; box-shadow: 3px 3px 0px var(--retro-text); border-radius: 0; }
+        .btn-retro:hover, .btn-retro:focus { background-color: var(--retro-text); color: var(--retro-bg); border-color: var(--retro-text-alt); box-shadow: 3px 3px 0px var(--retro-text-alt); outline: none; }
+        .btn-retro:active { box-shadow: none; transform: translate(3px, 3px); }
+        .game-over-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: rgba(10, 10, 31, 0.85); color: var(--retro-text); font-size: 1.5rem; text-align: center; padding: 20px; z-index: 10; font-family: 'Press Start 2P', cursive; border: 3px solid var(--retro-border); box-shadow: var(--retro-glow); }
+        #gameOverMessage { color: var(--retro-text-alt); text-shadow: var(--retro-glow-text-alt); margin-bottom: 1rem; font-size: 2.5rem; }
+        #finalScoreDisplay { margin-bottom: 1.5rem; font-size: 1.2rem; }
+        #newHighScoreInputContainer { display: none; margin-top: 1rem; }
+        #newHighScoreInputContainer label { display: block; margin-bottom: 0.8rem; color: var(--retro-text-alt); font-size: 1rem; }
+        #playerNameInput { font-family: 'Press Start 2P', cursive; background-color: var(--retro-bg); color: var(--retro-text); border: 2px solid var(--retro-border); padding: 8px 12px; text-align: center; width: 250px; max-width: 80%; margin-bottom: 1rem; text-transform: uppercase; font-size: 1rem; }
+        #playerNameInput:focus { outline: none; box-shadow: var(--retro-glow); }
+        #restartButton, #saveScoreButton { margin-top: 1rem; }
+        body.fullscreen-active { padding-top: 0 !important; width: 100%; height: 100%; }
+        body.fullscreen-active .main-container { max-width: none; padding: 0; height: 100%; }
+        body.fullscreen-active .game-row { height: 100%; }
+        body.fullscreen-active .game-panel { flex-grow: 1; width: 100%; height: 100%; padding: 0; display: flex; justify-content: center; align-items: center; }
+        body.fullscreen-active #gameCanvas { display: block; width: 100%; height: 100%; object-fit: contain; border: none; box-shadow: none; }
+        body.fullscreen-active .webcam-panel { display: none; }
+        body.fullscreen-active #webcam-container { position: fixed; top: 10px; right: 10px; width: 120px; height: 90px; z-index: 50; border: 2px solid var(--retro-border); box-shadow: var(--retro-glow); background-color: rgba(0, 0, 0, 0.7); max-width: none; aspect-ratio: auto; margin: 0; padding: 0; overflow: hidden; }
+        body.fullscreen-active #webcam-container #input_video, body.fullscreen-active #webcam-container #poseCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        body.fullscreen-active #webcam-container #poseCanvas { z-index: 51; background-color: transparent !important; }
+        body.fullscreen-active > .d-flex { display: none !important; }
+        body.fullscreen-active .game-over-container { position: fixed; }
     </style>
 </head>
 <body>
-    <!-- Contenedor para título y botón -->
-    <div class="d-flex justify-content-center align-items-center mb-2 px-3">
-        <h1 class="me-3">Mediapipe Pose Driver</h1>
-        <button id="fullscreen-button" class="btn btn-outline-light btn-sm">Pantalla Completa</button>
+    <!-- Modal High Scores -->
+    <div class="modal fade" id="highScoreModal" tabindex="-1" aria-labelledby="highScoreModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="highScoreModalLabel">HALL OF FAME</h5>
+             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <ol id="highScoreList"></ol>
+          </div>
+          <div class="modal-footer" id="highScoreModalFooter">
+             <!-- Botón Start Game siempre presente aquí, aunque se oculte/muestre -->
+             <button type="button" id="startGameButton" class="btn-retro" data-bs-dismiss="modal">Start Game</button>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- Título y Botón Fullscreen -->
+    <div class="d-flex justify-content-center align-items-center mb-1 px-3">
+        <h1 class="me-3" style="font-size: 1.5rem;">Pose Driver</h1>
+        <button id="fullscreen-button" class="btn btn-outline-light btn-sm" style="font-family: sans-serif; font-size: 0.7rem;">FS</button>
+    </div>
+
+    <!-- Estructura principal -->
     <div class="container-fluid main-container">
         <div class="row game-row">
             <div class="col-md-6 game-panel">
-                 <!-- Contenedor relativo para Game Over -->
-                 <div style="position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+                 <div id="gameArea" style="position: relative; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
                     <canvas id="gameCanvas"></canvas>
-                    <!-- Game Over Screen se posiciona sobre el canvas vía JS -->
-                    <div id="gameOverScreen" class="game-over-screen" style="display: none; position: absolute;">
-                        GAME OVER
-                        <div id="finalScore"></div>
-                        <button id="restartButton" class="btn btn-primary mt-3">Reiniciar</button>
+                    <!-- Game Over Container (solo para input si es high score) -->
+                    <div id="gameOverContainer" class="game-over-container" style="display: none;">
+                        <div id="gameOverMessage">HIGH SCORE!</div>
+                        <div id="finalScoreDisplay">Score: 0</div>
+                        <div id="newHighScoreInputContainer">
+                            <label for="playerNameInput">ENTER NAME:</label>
+                            <input type="text" id="playerNameInput" maxlength="15" placeholder="AAA">
+                            <button id="saveScoreButton" class="btn-retro">SAVE</button>
+                        </div>
+                        <!-- Botón Restart ya no es necesario aquí -->
                     </div>
                 </div>
             </div>
-            <!-- El panel de la webcam se oculta en fullscreen por CSS -->
             <div class="col-md-6 webcam-panel">
-                <!-- El contenedor se reposiciona en fullscreen por CSS -->
                 <div id="webcam-container">
                     <video id="input_video" autoplay muted playsinline></video>
                     <canvas id="poseCanvas"></canvas>
@@ -116,250 +127,211 @@
             </div>
         </div>
     </div>
-    <div class="loading" id="loading-indicator"> Cargando Recursos... </div>
+    <div class="loading" id="loading-indicator"> LOADING... </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
     <script>
-        // --- Elementos DOM ---
-        const gameCanvas = document.getElementById('gameCanvas');
-        const gameCtx = gameCanvas.getContext('2d');
-        const videoElement = document.getElementById('input_video');
-        const poseCanvas = document.getElementById('poseCanvas');
-        const poseCtx = poseCanvas.getContext('2d');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const gameOverScreen = document.getElementById('gameOverScreen');
-        const restartButton = document.getElementById('restartButton');
-        const finalScoreElement = document.getElementById('finalScore');
-        const fullscreenButton = document.getElementById('fullscreen-button'); // <<< Botón Fullscreen
+        // --- Elementos DOM (sin cambios) ---
+        const gameCanvas = document.getElementById('gameCanvas'); const gameCtx = gameCanvas.getContext('2d');
+        const videoElement = document.getElementById('input_video'); const poseCanvas = document.getElementById('poseCanvas'); const poseCtx = poseCanvas.getContext('2d');
+        const loadingIndicator = document.getElementById('loading-indicator'); const fullscreenButton = document.getElementById('fullscreen-button'); const gameArea = document.getElementById('gameArea');
+        const highScoreModalElement = document.getElementById('highScoreModal'); const highScoreListElement = document.getElementById('highScoreList');
+        const startGameButton = document.getElementById('startGameButton'); const highScoreModalFooter = document.getElementById('highScoreModalFooter');
+        const gameOverContainer = document.getElementById('gameOverContainer'); const gameOverMessage = document.getElementById('gameOverMessage');
+        const finalScoreDisplay = document.getElementById('finalScoreDisplay'); const newHighScoreInputContainer = document.getElementById('newHighScoreInputContainer');
+        const playerNameInput = document.getElementById('playerNameInput'); const saveScoreButton = document.getElementById('saveScoreButton');
+        // const restartButton = document.getElementById('restartButton'); // Eliminado de JS porque no existe en HTML
 
-        // --- Configuración Juego ---
-        const GAME_WIDTH = 600;
-        const GAME_HEIGHT = 600;
-        const WEBCAM_PROCESSING_WIDTH = 640; // Mantenemos para Mediapipe
-        const WEBCAM_PROCESSING_HEIGHT = 480;// Mantenemos para Mediapipe
+        // --- Constantes High Score (sin cambios) ---
+        const HIGH_SCORE_KEY = 'poseDriverRetroHighScores'; const MAX_HIGH_SCORES = 15; const MAX_NAME_LENGTH = 15;
 
-        // --- Configuración Sprite Sheet (COCHES) ---
-        const SPRITE_SHEET_SRC = 'cars_sprite_sheet.png';
-        const SPRITE_WIDTH = 40; const SPRITE_HEIGHT = 60; const SPRITES_PER_ROW = 3;
-        let carSprites = new Image(); let spritesLoaded = false; let numCarSprites = 0;
+        // --- Configuración Juego (Sin cambios) ---
+        const GAME_WIDTH = 600; const GAME_HEIGHT = 600; const WEBCAM_PROCESSING_WIDTH = 640; const WEBCAM_PROCESSING_HEIGHT = 480;
+        const SPRITE_SHEET_SRC = 'cars_sprite_sheet.png'; const SPRITE_WIDTH = 35; const SPRITE_HEIGHT = 70; const SPRITES_PER_ROW = 8; const PLAYER_CAR_SPRITE_INDEX = 3;
+        const SCENERY_SPRITE_SHEET_SRC = 'scenery_sprite_sheet.png'; const SCENERY_SPRITE_WIDTH = 30; const SCENERY_SPRITE_HEIGHT = 30; const SCENERY_SPRITES_PER_ROW = 8; const NUM_SCENERY_TYPES = 8;
+        const ROAD_WIDTH_FACTOR = 0.7; const CURVE_AMPLITUDE = 80; const CURVE_FREQUENCY = 0.001; const ENEMY_COLLISION_BOUNCE = 3;
+        const SCENERY_SPAWN_INTERVAL_Y = 80; const SCENERY_GRASS_PROBABILITY = 0.75; const SCENERY_MIN_OFFSET = 5; const SCENERY_MAX_OFFSET = 40;
+        const BASE_ROAD_LINE_SPEED = 8; const BASE_ENEMY_SPEED_MIN = 4; const BASE_ENEMY_SPEED_MAX = 7; const BASE_ENEMY_SPAWN_INTERVAL = 33; const SPEED_INCREASE_RATE = 0.0005; const SPAWN_DECREASE_RATE = 0.01;
+        const MAX_ROAD_SPEED = 20; const MAX_ENEMY_SPEED_FACTOR = 2.0; const MIN_SPAWN_INTERVAL = 15; const HAND_TILT_THRESHOLD = 0.05;
 
-        // --- Configuración Sprite Sheet (ESCENARIO) ---
-        const SCENERY_SPRITE_SHEET_SRC = 'scenery_sprite_sheet.png';
-        const SCENERY_SPRITE_WIDTH = 30; const SCENERY_SPRITE_HEIGHT = 30; const SCENERY_SPRITES_PER_ROW = 2;
-        const NUM_SCENERY_TYPES = 2; let scenerySprites = new Image(); let sceneryLoaded = false;
+        // --- Sprites e Imágenes (sin cambios) ---
+        let carSprites = new Image(); let spritesLoaded = false; let numCarSprites = 0; let scenerySprites = new Image(); let sceneryLoaded = false;
 
-        // --- Configuración Curva Carretera ---
-        const ROAD_WIDTH_FACTOR = 0.7; const CURVE_AMPLITUDE = 80; const CURVE_FREQUENCY = 0.001;
+        // --- Estado Juego (sin cambios) ---
+        let playerCar = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80, width: SPRITE_WIDTH, height: SPRITE_HEIGHT, speed: 5, spriteIndex: PLAYER_CAR_SPRITE_INDEX };
+        let enemies = []; let roadLines = []; let sceneryObjects = []; let score = 0; let isGameOver = false; let gameLoopId = null; let gameActuallyStarted = false;
+        let framesSinceLastSpawn = 0; let roadYOffset = 0; let lastScenerySpawnY = 0; let currentRoadLineSpeed = BASE_ROAD_LINE_SPEED; let currentEnemySpeedMin = BASE_ENEMY_SPEED_MIN;
+        let currentEnemySpeedMax = BASE_ENEMY_SPEED_MAX; let currentEnemySpawnInterval = BASE_ENEMY_SPAWN_INTERVAL; let playerMoveDirection = 0;
 
-        // --- Configuración Enemigos y Colisión ---
-        const ENEMY_COLLISION_BOUNCE = 3;
+        // --- Estado UI (sin cambios) ---
+        let highScores = []; let highScoreModalInstance = null;
 
-        // --- Configuración Spawn Escenario ---
-        const SCENERY_SPAWN_INTERVAL_Y = 80; const SCENERY_GRASS_PROBABILITY = 0.75;
-        const SCENERY_MIN_OFFSET = 5; const SCENERY_MAX_OFFSET = 40;
-
-        // --- Estado Juego ---
-        let playerCar = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80, width: SPRITE_WIDTH, height: SPRITE_HEIGHT, speed: 5, spriteIndex: 2 };
-        let enemies = []; let roadLines = []; let sceneryObjects = [];
-        let score = 0; let isGameOver = false; let gameLoopId = null;
-        let framesSinceLastSpawn = 0; let roadYOffset = 0; let nextEnemySpriteIndex = 0; let lastScenerySpawnY = 0;
-
-        // --- Dificultad Progresiva ---
-        const BASE_ROAD_LINE_SPEED = 8; const BASE_ENEMY_SPEED_MIN = 4; const BASE_ENEMY_SPEED_MAX = 7;
-        const BASE_ENEMY_SPAWN_INTERVAL = 33; const SPEED_INCREASE_RATE = 0.0005; const SPAWN_DECREASE_RATE = 0.01;
-        const MAX_ROAD_SPEED = 20; const MAX_ENEMY_SPEED_FACTOR = 2.0; const MIN_SPAWN_INTERVAL = 15;
-        let currentRoadLineSpeed = BASE_ROAD_LINE_SPEED; let currentEnemySpeedMin = BASE_ENEMY_SPEED_MIN;
-        let currentEnemySpeedMax = BASE_ENEMY_SPEED_MAX; let currentEnemySpawnInterval = BASE_ENEMY_SPAWN_INTERVAL;
-
-        // --- Estado Control Mediapipe ---
-        let playerMoveDirection = 0; const HAND_TILT_THRESHOLD = 0.05;
-
-        // --- Inicializar Canvas ---
-        gameCanvas.width = GAME_WIDTH; gameCanvas.height = GAME_HEIGHT;
-        poseCanvas.width = WEBCAM_PROCESSING_WIDTH; poseCanvas.height = WEBCAM_PROCESSING_HEIGHT;
-
+        // --- Inicializar Canvas (sin cambios) ---
+        gameCanvas.width = GAME_WIDTH; gameCanvas.height = GAME_HEIGHT; poseCanvas.width = WEBCAM_PROCESSING_WIDTH; poseCanvas.height = WEBCAM_PROCESSING_HEIGHT;
 
         // ==================================
-        //      LÓGICA PANTALLA COMPLETA (NUEVO)
+        //      LÓGICA HIGH SCORES (sin cambios)
         // ==================================
-        function isFullscreen() {
-           return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-        }
-
-        function toggleFullscreen() {
-           if (!isFullscreen()) {
-               const elementToFullscreen = document.documentElement; // Entrar con toda la página
-               if (elementToFullscreen.requestFullscreen) { elementToFullscreen.requestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); }
-               else if (elementToFullscreen.webkitRequestFullscreen) { elementToFullscreen.webkitRequestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); }
-               else if (elementToFullscreen.msRequestFullscreen) { elementToFullscreen.msRequestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); }
-           } else {
-               if (document.exitFullscreen) { document.exitFullscreen(); }
-               else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
-               else if (document.msExitFullscreen) { document.msExitFullscreen(); }
-           }
-        }
-
-        function handleFullscreenChange() {
-           const fullscreenActive = isFullscreen();
-           if (fullscreenActive) {
-               document.body.classList.add('fullscreen-active');
-               fullscreenButton.textContent = 'Salir';
-               console.log("Entrando Fullscreen");
-           } else {
-               document.body.classList.remove('fullscreen-active');
-               fullscreenButton.textContent = 'Pantalla Completa';
-               console.log("Saliendo Fullscreen");
-           }
-           // Ajustar posición de Game Over DESPUÉS de que cambie el estado
-           ajustarPosicionGameOver();
-        }
-
-        // Listeners para el botón y cambios de estado
-        fullscreenButton.addEventListener('click', toggleFullscreen);
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
-        // Función para ajustar la posición del Game Over (también llamada desde gameOver y window.onload)
-        function ajustarPosicionGameOver() {
-             // requestAnimationFrame espera al siguiente reflow/repaint, asegurando que las dimensiones son las correctas
-             requestAnimationFrame(() => {
-                if (!gameCanvas) return; // Asegurarse que el canvas existe
-                 const canvasRect = gameCanvas.getBoundingClientRect();
-
-                 // Siempre posicionar relativo al canvas, usando fixed si estamos en fullscreen
-                 gameOverScreen.style.position = isFullscreen() ? 'fixed' : 'absolute';
-                 gameOverScreen.style.left = canvasRect.left + 'px';
-                 gameOverScreen.style.top = canvasRect.top + 'px';
-                 gameOverScreen.style.width = canvasRect.width + 'px';
-                 gameOverScreen.style.height = canvasRect.height + 'px';
-                 // Asegurarse que sea visible si isGameOver es true (aunque gameOver() ya lo hace)
-                 if (isGameOver) {
-                      gameOverScreen.style.display = 'flex';
-                 }
-             });
-        }
-        // --- Fin Lógica Pantalla Completa ---
-
+        function loadHighScores() { try { const s = localStorage.getItem(HIGH_SCORE_KEY); if (s) { const p = JSON.parse(s); if (Array.isArray(p)) { return p.filter(e => typeof e.score === 'number' && typeof e.name === 'string').sort((a, b) => b.score - a.score).slice(0, MAX_HIGH_SCORES); } } } catch (err) { console.error("HS Load Error:", err); } return []; }
+        function saveHighScores(scoresToSave) { try { const s = scoresToSave.sort((a, b) => b.score - a.score).slice(0, MAX_HIGH_SCORES); localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(s)); highScores = s; } catch (err) { console.error("HS Save Error:", err); } }
+        function displayHighScores(scores, listElement, highlightName = null, highlightScore = null) { listElement.innerHTML = ''; if (scores.length === 0) { listElement.innerHTML = '<li>NO HIGH SCORES YET!</li>'; return; } scores.forEach((entry, index) => { const li = document.createElement('li'); const rS = document.createElement('span'); const sS = document.createElement('span'); const nS = document.createElement('span'); rS.textContent = `${index + 1}.`; sS.textContent = String(entry.score).padStart(6, '0'); nS.textContent = entry.name.toUpperCase(); li.appendChild(rS); li.appendChild(sS); li.appendChild(nS); if (highlightName !== null && highlightScore !== null && entry.name === highlightName && entry.score === highlightScore) { li.classList.add('highlighted-entry'); } listElement.appendChild(li); }); }
+        function isHighScore(currentScore, scores) { if (scores.length < MAX_HIGH_SCORES) return true; return currentScore > scores[scores.length - 1].score; }
+        function addHighScore(name, currentScore, scores) { const n = { name: name.toUpperCase().slice(0, MAX_NAME_LENGTH) || 'AAA', score: currentScore }; return [...scores, n].sort((a, b) => b.score - a.score).slice(0, MAX_HIGH_SCORES); }
 
         // ==================================
-        //      LÓGICA DEL JUEGO
+        //      LÓGICA PANTALLA COMPLETA (Sin cambios)
         // ==================================
-        // ... (getRoadCenterXOffset, getRoadEdges, initRoadLines, drawRoad, updateRoadLines sin cambios)...
+        function isFullscreen() { return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement; }
+        function toggleFullscreen() { if (!isFullscreen()) { const e = document.documentElement; if (e.requestFullscreen) { e.requestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); } else if (e.webkitRequestFullscreen) { e.webkitRequestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); } else if (e.msRequestFullscreen) { e.msRequestFullscreen().catch(err => console.error(`FS Error: ${err.message}`)); } } else { if (document.exitFullscreen) { document.exitFullscreen(); } else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); } else if (document.msExitFullscreen) { document.msExitFullscreen(); } } }
+        function handleFullscreenChange() { const f = isFullscreen(); if (f) { document.body.classList.add('fullscreen-active'); } else { document.body.classList.remove('fullscreen-active'); } ajustarPosicionGameOver(); } // ajustarPosicionGameOver ahora solo afecta al input
+        fullscreenButton.addEventListener('click', toggleFullscreen); document.addEventListener('fullscreenchange', handleFullscreenChange); document.addEventListener('webkitfullscreenchange', handleFullscreenChange); document.addEventListener('mozfullscreenchange', handleFullscreenChange); document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        function ajustarPosicionGameOver() { requestAnimationFrame(() => { if (!gameCanvas || !gameOverContainer) return; const c = gameCanvas.getBoundingClientRect(); gameOverContainer.style.position = isFullscreen() ? 'fixed' : 'absolute'; gameOverContainer.style.left = c.left + 'px'; gameOverContainer.style.top = c.top + 'px'; gameOverContainer.style.width = c.width + 'px'; gameOverContainer.style.height = c.height + 'px'; /* No fuerza display aquí */ }); }
+
+        // ==================================
+        //      LÓGICA DEL JUEGO (Sin cambios internos)
+        // ==================================
         function getRoadCenterXOffset(y) { return Math.sin((y + roadYOffset) * CURVE_FREQUENCY) * CURVE_AMPLITUDE; }
-        function getRoadEdges(y) { const cxo = getRoadCenterXOffset(y); const rpw = GAME_WIDTH * ROAD_WIDTH_FACTOR; const cax = GAME_WIDTH / 2 + cxo; const lex = cax - rpw / 2; const rex = cax + rpw / 2; return { left: lex, right: rex, center: cax }; }
-        function initRoadLines() { roadLines = []; const nl = 6; const ls = GAME_HEIGHT / nl; for (let i = 0; i < nl; i++) { roadLines.push({ y: i * ls }); } }
-        function drawRoad() { gameCtx.fillStyle = '#556B2F'; gameCtx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT); gameCtx.fillStyle = '#343a40'; const sh = 10; gameCtx.beginPath(); let fe = getRoadEdges(0); gameCtx.moveTo(fe.left, 0); for (let y = sh; y <= GAME_HEIGHT; y += sh) { gameCtx.lineTo(getRoadEdges(y).left, y); } const be = getRoadEdges(GAME_HEIGHT); gameCtx.lineTo(be.right, GAME_HEIGHT); for (let y = GAME_HEIGHT - sh; y >= 0; y -= sh) { gameCtx.lineTo(getRoadEdges(y).right, y); } gameCtx.closePath(); gameCtx.fill(); gameCtx.strokeStyle = '#FFFFFF'; gameCtx.lineWidth = 10; gameCtx.beginPath(); gameCtx.moveTo(fe.left, 0); for (let y = sh; y <= GAME_HEIGHT; y += sh) { gameCtx.lineTo(getRoadEdges(y).left, y); } gameCtx.stroke(); gameCtx.beginPath(); gameCtx.moveTo(fe.right, 0); for (let y = sh; y <= GAME_HEIGHT; y += sh) { gameCtx.lineTo(getRoadEdges(y).right, y); } gameCtx.stroke(); gameCtx.fillStyle = '#FFFFFF'; const ldw = 10; const ldh = 40; roadLines.forEach(l => { const lc = getRoadEdges(l.y).center; gameCtx.fillRect(lc - ldw / 2, l.y, ldw, ldh); }); }
+        function getRoadEdges(y) { const c = getRoadCenterXOffset(y); const r = GAME_WIDTH * ROAD_WIDTH_FACTOR; const a = GAME_WIDTH / 2 + c; const l = a - r / 2; const x = a + r / 2; return { left: l, right: x, center: a }; }
+        function initRoadLines() { roadLines = []; const n = 6; const l = GAME_HEIGHT / n; for (let i = 0; i < n; i++) { roadLines.push({ y: i * l }); } }
+        function drawRoad() { gameCtx.fillStyle = '#556B2F'; gameCtx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT); gameCtx.fillStyle = '#343a40'; const s = 10; gameCtx.beginPath(); let f = getRoadEdges(0); gameCtx.moveTo(f.left, 0); for (let y = s; y <= GAME_HEIGHT; y += s) { gameCtx.lineTo(getRoadEdges(y).left, y); } const b = getRoadEdges(GAME_HEIGHT); gameCtx.lineTo(b.right, GAME_HEIGHT); for (let y = GAME_HEIGHT - s; y >= 0; y -= s) { gameCtx.lineTo(getRoadEdges(y).right, y); } gameCtx.closePath(); gameCtx.fill(); gameCtx.strokeStyle = '#FFFFFF'; gameCtx.lineWidth = 2; gameCtx.beginPath(); gameCtx.moveTo(f.left, 0); for (let y = s; y <= GAME_HEIGHT; y += s) { gameCtx.lineTo(getRoadEdges(y).left, y); } gameCtx.stroke(); gameCtx.beginPath(); gameCtx.moveTo(f.right, 0); for (let y = s; y <= GAME_HEIGHT; y += s) { gameCtx.lineTo(getRoadEdges(y).right, y); } gameCtx.stroke(); gameCtx.fillStyle = '#FFFFFF'; const w = 5; const h = 25; roadLines.forEach(l => { const c = getRoadEdges(l.y).center; gameCtx.fillRect(c - w / 2, l.y, w, h); }); }
         function updateRoadLines() { roadYOffset += currentRoadLineSpeed; roadLines.forEach(l => { l.y += currentRoadLineSpeed; if (l.y >= GAME_HEIGHT) { l.y -= GAME_HEIGHT; } }); }
-
-        // --- Lógica del Escenario ---
-        function spawnSceneryItem(yPos) { if (!sceneryLoaded) return; const si = (Math.random() < SCENERY_GRASS_PROBABILITY) ? 0 : 1; const ed = getRoadEdges(yPos); const of = Math.random() * (SCENERY_MAX_OFFSET - SCENERY_MIN_OFFSET) + SCENERY_MIN_OFFSET; if (Math.random() < 0.5) { const x = ed.left - of - SCENERY_SPRITE_WIDTH; if (x >= 0) { sceneryObjects.push({ x: x, y: yPos, spriteIndex: si }); } } else { const x = ed.right + of; if (x + SCENERY_SPRITE_WIDTH <= GAME_WIDTH) { sceneryObjects.push({ x: x, y: yPos, spriteIndex: si }); } } }
+        function spawnSceneryItem(y) { if (!sceneryLoaded) return; const i = (Math.random() < SCENERY_GRASS_PROBABILITY) ? 0 : 1; const e = getRoadEdges(y); const o = Math.random() * (SCENERY_MAX_OFFSET - SCENERY_MIN_OFFSET) + SCENERY_MIN_OFFSET; if (Math.random() < 0.5) { const x = e.left - o - SCENERY_SPRITE_WIDTH; if (x >= 0) { sceneryObjects.push({ x: x, y: y, spriteIndex: i }); } } else { const x = e.right + o; if (x + SCENERY_SPRITE_WIDTH <= GAME_WIDTH) { sceneryObjects.push({ x: x, y: y, spriteIndex: i }); } } }
         function updateScenery() { for (let i = sceneryObjects.length - 1; i >= 0; i--) { sceneryObjects[i].y += currentRoadLineSpeed; if (sceneryObjects[i].y > GAME_HEIGHT) { sceneryObjects.splice(i, 1); } } while (roadYOffset > lastScenerySpawnY + SCENERY_SPAWN_INTERVAL_Y) { lastScenerySpawnY += SCENERY_SPAWN_INTERVAL_Y; spawnSceneryItem(-SCENERY_SPRITE_HEIGHT); } }
-        function drawScenery() { if (!sceneryLoaded) return; sceneryObjects.forEach(item => { const sx = (item.spriteIndex % SCENERY_SPRITES_PER_ROW) * SCENERY_SPRITE_WIDTH; const sy = Math.floor(item.spriteIndex / SCENERY_SPRITES_PER_ROW) * SCENERY_SPRITE_HEIGHT; if (sx + SCENERY_SPRITE_WIDTH <= scenerySprites.width && sy + SCENERY_SPRITE_HEIGHT <= scenerySprites.height) { gameCtx.drawImage(scenerySprites, sx, sy, SCENERY_SPRITE_WIDTH, SCENERY_SPRITE_HEIGHT, item.x, item.y, SCENERY_SPRITE_WIDTH, SCENERY_SPRITE_HEIGHT); } else { console.warn(`Índice sprite escenario ${item.spriteIndex} inválido.`); } }); }
+        function drawScenery() { if (!sceneryLoaded) return; sceneryObjects.forEach(i => { const x = (i.spriteIndex % SCENERY_SPRITES_PER_ROW) * SCENERY_SPRITE_WIDTH; const y = Math.floor(i.spriteIndex / SCENERY_SPRITES_PER_ROW) * SCENERY_SPRITE_HEIGHT; if (x + SCENERY_SPRITE_WIDTH <= scenerySprites.width && y + SCENERY_SPRITE_HEIGHT <= scenerySprites.height) { gameCtx.drawImage(scenerySprites, x, y, SCENERY_SPRITE_WIDTH, SCENERY_SPRITE_HEIGHT, i.x, i.y, SCENERY_SPRITE_WIDTH, SCENERY_SPRITE_HEIGHT); } else { console.warn(`Scenery index ${i.spriteIndex} invalid.`); } }); }
+        function spawnEnemy() { if (!spritesLoaded || SPRITES_PER_ROW <= 1) return; const w = SPRITE_WIDTH; const h = SPRITE_HEIGHT; const t = getRoadEdges(-h); const r = t.right - t.left; const s = r - w; if (s <= 0) return; const c = t.left + (w / 2) + Math.random() * s; const x = r > 0 ? (c - t.left) / r : 0.5; let e; do { e = Math.floor(Math.random() * SPRITES_PER_ROW); } while (e === PLAYER_CAR_SPRITE_INDEX); enemies.push({ x: c - (w / 2), y: -h, width: w, height: h, speed: Math.random() * (currentEnemySpeedMax - currentEnemySpeedMin) + currentEnemySpeedMin, spriteIndex: e, relativeX: x }); }
+        function updateEnemies() { for (let i = 0; i < enemies.length; i++) { const e = enemies[i]; e.y += e.speed; if (e.y > GAME_HEIGHT) { enemies.splice(i, 1); i--; continue; } const c = getRoadEdges(e.y + e.height / 2); const r = c.right - c.left; if (r > 0) { let t = c.left + (e.relativeX * r); e.x = t - (e.width / 2); e.x = Math.max(c.left, Math.min(c.right - e.width, e.x)); } else { e.x = GAME_WIDTH / 2 - e.width / 2; } } for (let i = 0; i < enemies.length; i++) { for (let j = i + 1; j < enemies.length; j++) { const e1 = enemies[i]; const e2 = enemies[j]; if (e1.x < e2.x + e2.width && e1.x + e1.width > e2.x && e1.y < e2.y + e2.height && e1.y + e1.height > e2.y) { const a = (e1.speed + e2.speed) / 2; e1.speed = a; e2.speed = a; const y = (e1.y + e1.height / 2 + e2.y + e2.height / 2) / 2; const rc = getRoadEdges(y).center; const cc = (e1.x + e1.width / 2 + e2.x + e2.width / 2) / 2; let m = (cc < rc) ? ENEMY_COLLISION_BOUNCE : -ENEMY_COLLISION_BOUNCE; e1.x += m; e2.x += m; const d1 = getRoadEdges(e1.y + e1.height / 2); e1.x = Math.max(d1.left, Math.min(d1.right - e1.width, e1.x)); const d2 = getRoadEdges(e2.y + e2.height / 2); e2.x = Math.max(d2.left, Math.min(d2.right - e2.width, e2.x)); } } } framesSinceLastSpawn++; if (framesSinceLastSpawn >= currentEnemySpawnInterval) { spawnEnemy(); framesSinceLastSpawn = 0; } }
+        function drawEnemies() { if (!spritesLoaded) return; enemies.forEach(e => { const x = (e.spriteIndex % SPRITES_PER_ROW) * SPRITE_WIDTH; const y = Math.floor(e.spriteIndex / SPRITES_PER_ROW) * SPRITE_HEIGHT; if (x + SPRITE_WIDTH <= carSprites.width && y + SPRITE_HEIGHT <= carSprites.height) { gameCtx.drawImage(carSprites, x, y, SPRITE_WIDTH, SPRITE_HEIGHT, e.x, e.y, e.width, e.height); } else { console.warn(`Enemy index ${e.spriteIndex} invalid.`); gameCtx.fillStyle = 'magenta'; gameCtx.fillRect(e.x, e.y, e.width, e.height); } }); }
+        function drawPlayer() { if (!spritesLoaded) return; const x = (playerCar.spriteIndex % SPRITES_PER_ROW) * SPRITE_WIDTH; const y = Math.floor(playerCar.spriteIndex / SPRITES_PER_ROW) * SPRITE_HEIGHT; if (x + SPRITE_WIDTH <= carSprites.width && y + SPRITE_HEIGHT <= carSprites.height) { gameCtx.drawImage(carSprites, x, y, SPRITE_WIDTH, SPRITE_HEIGHT, playerCar.x, playerCar.y, playerCar.width, playerCar.height); } else { console.error(`Player index ${playerCar.spriteIndex} invalid.`); gameCtx.fillStyle = 'red'; gameCtx.fillRect(playerCar.x, playerCar.y, playerCar.width, playerCar.height); } }
+        function updatePlayer() { if (!gameActuallyStarted || isGameOver) return; if (playerMoveDirection === -1) { playerCar.x -= playerCar.speed; } else if (playerMoveDirection === 1) { playerCar.x += playerCar.speed; } const p = getRoadEdges(playerCar.y + playerCar.height / 2); const m = p.left; const x = p.right - playerCar.width; playerCar.x = Math.max(m, Math.min(x, playerCar.x)); }
+        function checkCollisions() { if (!gameActuallyStarted || isGameOver) return; enemies.forEach(e => { if (playerCar.x < e.x + e.width && playerCar.x + playerCar.width > e.x && playerCar.y < e.y + e.height && playerCar.y + playerCar.height > e.y) { gameOver(); } }); }
+        function drawScore() { if (!gameActuallyStarted) return; gameCtx.fillStyle = '#FFFF00'; gameCtx.font = '14px "Press Start 2P"'; gameCtx.textAlign = 'left'; gameCtx.fillText('SCORE:' + String(score).padStart(6, '0'), 10, 25); }
+        function updateDifficulty() { if (!gameActuallyStarted || isGameOver) return; currentRoadLineSpeed = Math.min(MAX_ROAD_SPEED, BASE_ROAD_LINE_SPEED + score * SPEED_INCREASE_RATE * 1.5); const s = 1 + score * SPEED_INCREASE_RATE; currentEnemySpeedMin = Math.min(BASE_ENEMY_SPEED_MIN * MAX_ENEMY_SPEED_FACTOR, BASE_ENEMY_SPEED_MIN * s); currentEnemySpeedMax = Math.min(BASE_ENEMY_SPEED_MAX * MAX_ENEMY_SPEED_FACTOR, BASE_ENEMY_SPEED_MAX * s); currentEnemySpawnInterval = Math.max(MIN_SPAWN_INTERVAL, BASE_ENEMY_SPAWN_INTERVAL - score * SPAWN_DECREASE_RATE); }
 
-        // --- Lógica Enemigos ---
-        function spawnEnemy() { if (!spritesLoaded) return; const ew = SPRITE_WIDTH; const eh = SPRITE_HEIGHT; const te = getRoadEdges(-eh); const rpw = te.right - te.left; const ssw = rpw - ew; if (ssw <= 0) return; const scx = te.left + (ew / 2) + Math.random() * ssw; const rx = rpw > 0 ? (scx - te.left) / rpw : 0.5; const esi = nextEnemySpriteIndex; nextEnemySpriteIndex = (nextEnemySpriteIndex + 1) % 2; enemies.push({ x: scx - (ew / 2), y: -eh, width: ew, height: eh, speed: Math.random() * (currentEnemySpeedMax - currentEnemySpeedMin) + currentEnemySpeedMin, spriteIndex: esi, relativeX: rx }); }
-        function updateEnemies() { for (let i = 0; i < enemies.length; i++) { const e = enemies[i]; e.y += e.speed; if (e.y > GAME_HEIGHT) { enemies.splice(i, 1); i--; continue; } const ce = getRoadEdges(e.y + e.height / 2); const crw = ce.right - ce.left; if (crw > 0) { let txc = ce.left + (e.relativeX * crw); e.x = txc - (e.width / 2); e.x = Math.max(ce.left, Math.min(ce.right - e.width, e.x)); } else { e.x = GAME_WIDTH / 2 - e.width / 2; } } for (let i = 0; i < enemies.length; i++) { for (let j = i + 1; j < enemies.length; j++) { const e1 = enemies[i]; const e2 = enemies[j]; if (e1.x < e2.x + e2.width && e1.x + e1.width > e2.x && e1.y < e2.y + e2.height && e1.y + e1.height > e2.y) { const avs = (e1.speed + e2.speed) / 2; e1.speed = avs; e2.speed = avs; const cy = (e1.y + e1.height / 2 + e2.y + e2.height / 2) / 2; const rcac = getRoadEdges(cy).center; const ccx = (e1.x + e1.width / 2 + e2.x + e2.width / 2) / 2; let ma = (ccx < rcac) ? ENEMY_COLLISION_BOUNCE : -ENEMY_COLLISION_BOUNCE; e1.x += ma; e2.x += ma; const ed1 = getRoadEdges(e1.y + e1.height / 2); e1.x = Math.max(ed1.left, Math.min(ed1.right - e1.width, e1.x)); const ed2 = getRoadEdges(e2.y + e2.height / 2); e2.x = Math.max(ed2.left, Math.min(ed2.right - e2.width, e2.x)); } } } framesSinceLastSpawn++; if (framesSinceLastSpawn >= currentEnemySpawnInterval) { spawnEnemy(); framesSinceLastSpawn = 0; } }
-        function drawEnemies() { if (!spritesLoaded) return; enemies.forEach(e => { const sx = (e.spriteIndex % SPRITES_PER_ROW) * SPRITE_WIDTH; const sy = Math.floor(e.spriteIndex / SPRITES_PER_ROW) * SPRITE_HEIGHT; if (sx + SPRITE_WIDTH <= carSprites.width && sy + SPRITE_HEIGHT <= carSprites.height) { gameCtx.drawImage(carSprites, sx, sy, SPRITE_WIDTH, SPRITE_HEIGHT, e.x, e.y, e.width, e.height); } else { console.warn(`Índice sprite enemigo ${e.spriteIndex} inválido.`); gameCtx.fillStyle = 'magenta'; gameCtx.fillRect(e.x, e.y, e.width, e.height); } }); }
-
-        // --- Lógica Jugador ---
-        function drawPlayer() { if (!spritesLoaded) return; const sx = (playerCar.spriteIndex % SPRITES_PER_ROW) * SPRITE_WIDTH; const sy = Math.floor(playerCar.spriteIndex / SPRITES_PER_ROW) * SPRITE_HEIGHT; if (sx + SPRITE_WIDTH <= carSprites.width && sy + SPRITE_HEIGHT <= carSprites.height) { gameCtx.drawImage(carSprites, sx, sy, SPRITE_WIDTH, SPRITE_HEIGHT, playerCar.x, playerCar.y, playerCar.width, playerCar.height); } else { console.error(`Sprite jugador ${playerCar.spriteIndex} fuera de límites.`); gameCtx.fillStyle = 'red'; gameCtx.fillRect(playerCar.x, playerCar.y, playerCar.width, playerCar.height); } }
-        function updatePlayer() { if (playerMoveDirection === -1) { playerCar.x -= playerCar.speed; } else if (playerMoveDirection === 1) { playerCar.x += playerCar.speed; } const pre = getRoadEdges(playerCar.y + playerCar.height / 2); const minX = pre.left; const maxX = pre.right - playerCar.width; playerCar.x = Math.max(minX, Math.min(maxX, playerCar.x)); }
-
-        // --- Colisiones (Jugador), Puntuación, Game Over, Dificultad ---
-        function checkCollisions() { enemies.forEach(e => { if (playerCar.x < e.x + e.width && playerCar.x + playerCar.width > e.x && playerCar.y < e.y + e.height && playerCar.y + playerCar.height > e.y) { gameOver(); } }); }
-        function drawScore() { gameCtx.fillStyle = '#FFFFFF'; gameCtx.font = '20px Arial'; gameCtx.textAlign = 'left'; gameCtx.fillText('Score: ' + score, 10, 30); }
-
-        // MODIFICADO: gameOver llama a ajustarPosicionGameOver
-        function gameOver() {
-             isGameOver = true;
-             finalScoreElement.textContent = 'Puntuación Final: ' + score;
-             ajustarPosicionGameOver(); // Llama a la función que calcula la posición
-             // La función ajustarPosicionGameOver se encarga de mostrarlo también si isGameOver es true
-             if (gameLoopId) cancelAnimationFrame(gameLoopId);
-             gameLoopId = null;
+        // --- Helper para mostrar modal ---
+        function prepareAndShowModal(highlightName = null, highlightScore = null) {
+             displayHighScores(highScores, highScoreListElement, highlightName, highlightScore);
+             startGameButton.style.display = 'inline-block'; // Asegurar botón Start visible
+             if (!highScoreModalInstance) {
+                 highScoreModalInstance = new bootstrap.Modal(highScoreModalElement);
+             }
+             highScoreModalInstance.show();
         }
-        function updateDifficulty() { crls = Math.min(MAX_ROAD_SPEED, BASE_ROAD_LINE_SPEED + score * SPEED_INCREASE_RATE * 1.5); const sm = 1 + score * SPEED_INCREASE_RATE; currentEnemySpeedMin = Math.min(BASE_ENEMY_SPEED_MIN * MAX_ENEMY_SPEED_FACTOR, BASE_ENEMY_SPEED_MIN * sm); currentEnemySpeedMax = Math.min(BASE_ENEMY_SPEED_MAX * MAX_ENEMY_SPEED_FACTOR, BASE_ENEMY_SPEED_MAX * sm); currentEnemySpawnInterval = Math.max(MIN_SPAWN_INTERVAL, BASE_ENEMY_SPAWN_INTERVAL - score * SPAWN_DECREASE_RATE); }
 
-        // --- Bucle Principal del Juego ---
-        function gameLoop() {
-            if (isGameOver) return;
-            updateRoadLines(); updateScenery(); updateEnemies(); updatePlayer(); checkCollisions();
-            if (isGameOver) return;
-            score++; updateDifficulty();
-            gameCtx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-            drawScenery(); drawRoad(); drawEnemies(); drawPlayer(); drawScore();
+        // --- gameOver MODIFICADO ---
+        function gameOver() {
+             if (isGameOver) return;
+             isGameOver = true; gameActuallyStarted = false; playerMoveDirection = 0;
+             const finalScoreValue = score; // Guardar score antes de detener bucle
+             if (gameLoopId) cancelAnimationFrame(gameLoopId); gameLoopId = null;
+
+             const currentHighScores = loadHighScores();
+
+             if (isHighScore(finalScoreValue, currentHighScores)) {
+                 // Mostrar pantalla de input temporalmente
+                 finalScoreDisplay.textContent = 'FINAL SCORE: ' + String(finalScoreValue).padStart(6, '0'); // Mostrar score aquí
+                 gameOverMessage.textContent = "HIGH SCORE!"; // Ya está en el HTML, pero aseguramos
+                 newHighScoreInputContainer.style.display = 'block'; // Mostrar input+save
+                 playerNameInput.value = '';
+                 playerNameInput.focus();
+                 gameOverContainer.style.display = 'flex'; // Mostrar este contenedor
+                 ajustarPosicionGameOver(); // Ajustar tamaño
+             } else {
+                 // NO es high score, ir directo al modal
+                 gameOverContainer.style.display = 'none'; // Asegurar contenedor oculto
+                 console.log("Game Over - No High Score. Showing modal.");
+                 prepareAndShowModal(); // Mostrar modal estándar
+             }
+        }
+
+        // --- Lógica botón Guardar Score MODIFICADA ---
+        saveScoreButton.addEventListener('click', () => {
+            const playerName = playerNameInput.value.trim();
+            const finalName = (playerName.length > 0 ? playerName : 'AAA').slice(0, MAX_NAME_LENGTH).toUpperCase();
+            // Usar el score guardado en gameOver o leerlo de nuevo del elemento
+            const finalScore = parseInt(finalScoreDisplay.textContent.split(': ')[1]) || score;
+
+            const currentHighScores = loadHighScores();
+            const updatedScores = addHighScore(finalName, finalScore, currentHighScores);
+            saveHighScores(updatedScores); // Actualiza variable global 'highScores' también
+
+            // Ocultar pantalla de input
+            gameOverContainer.style.display = 'none';
+
+            // Mostrar modal con highlight
+             console.log(`Saving score ${finalScore} for ${finalName}. Showing modal.`);
+            prepareAndShowModal(finalName, finalScore);
+        });
+
+        // --- Bucle Principal del Juego (Sin cambios) ---
+        function gameLoop() { if (!gameActuallyStarted || isGameOver) { if (gameLoopId) cancelAnimationFrame(gameLoopId); gameLoopId = null; return; } updateRoadLines(); updateScenery(); updateEnemies(); updatePlayer(); checkCollisions(); if (!isGameOver) { score++; updateDifficulty(); gameCtx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); drawScenery(); drawRoad(); drawEnemies(); drawPlayer(); drawScore(); gameLoopId = requestAnimationFrame(gameLoop); } }
+
+        // --- Resetear Juego (Simplificado) ---
+        function resetGame() {
+             console.log("Resetting game...");
+            playerCar.x = GAME_WIDTH / 2 - playerCar.width / 2; playerCar.y = GAME_HEIGHT - 80;
+            enemies = []; sceneryObjects = []; initRoadLines(); score = 0; isGameOver = false;
+            framesSinceLastSpawn = 0; playerMoveDirection = 0; roadYOffset = 0; lastScenerySpawnY = 0;
+            currentRoadLineSpeed = BASE_ROAD_LINE_SPEED; currentEnemySpeedMin = BASE_ENEMY_SPEED_MIN;
+            currentEnemySpeedMax = BASE_ENEMY_SPEED_MAX; currentEnemySpawnInterval = BASE_ENEMY_SPAWN_INTERVAL;
+            // Asegurar que el contenedor de input esté oculto al reiniciar
+            gameOverContainer.style.display = 'none';
+            newHighScoreInputContainer.style.display = 'none'; // Doble check
+
+            gameActuallyStarted = true;
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
             gameLoopId = requestAnimationFrame(gameLoop);
         }
-
-        // MODIFICADO: resetGame limpia escenario y oculta Game Over
-        function resetGame() {
-            playerCar.x = GAME_WIDTH / 2 - playerCar.width / 2;
-            enemies = []; sceneryObjects = []; initRoadLines(); score = 0; isGameOver = false;
-            framesSinceLastSpawn = 0; playerMoveDirection = 0; roadYOffset = 0; lastScenerySpawnY = 0; nextEnemySpriteIndex = 0;
-            currentRoadLineSpeed = BASE_ROAD_LINE_SPEED; currentEnemySpeedMin = BASE_ENEMY_SPEED_MIN; currentEnemySpeedMax = BASE_ENEMY_SPEED_MAX; currentEnemySpawnInterval = BASE_ENEMY_SPAWN_INTERVAL;
-            gameOverScreen.style.display = 'none'; // Asegurarse que esté oculto al reiniciar
-            if (!gameLoopId) { gameLoop(); }
-        }
-        restartButton.addEventListener('click', resetGame);
+        // startGameButton llama a resetGame (porque tiene el listener implícito por id)
+        // Y el data-bs-dismiss="modal" oculta el modal
 
         // ==================================
-        //      MEDIAPIPE (Control)
+        //      MEDIAPIPE (Control) (Sin cambios)
         // ==================================
-        // onPoseResults no necesita cambios significativos, las coordenadas siguen siendo relativas a poseCanvas (640x480)
-        function onPoseResults(results) {
-             if (isGameOver) { playerMoveDirection = 0; return; }
-             if (loadingIndicator.style.display !== 'none') { loadingIndicator.style.display = 'none'; }
-             poseCtx.save(); poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
-             poseCtx.scale(-1, 1); poseCtx.translate(-poseCanvas.width, 0); playerMoveDirection = 0;
-             if (results.poseLandmarks && typeof POSE_LANDMARKS !== 'undefined') {
-                const lm = results.poseLandmarks; const lw = lm[POSE_LANDMARKS.LEFT_WRIST]; const rw = lm[POSE_LANDMARKS.RIGHT_WRIST];
-                if (lw && rw && lw.visibility > 0.5 && rw.visibility > 0.5) {
-                    const lY = lw.y; const rY = rw.y; const yDiff = rY - lY;
-                    if (yDiff > HAND_TILT_THRESHOLD) { playerMoveDirection = 1; } else if (yDiff < -HAND_TILT_THRESHOLD) { playerMoveDirection = -1; }
-                    const p1 = { x: rw.x * poseCanvas.width, y: rY * poseCanvas.height }; const p2 = { x: lw.x * poseCanvas.width, y: lY * poseCanvas.height };
-                    const cx = (p1.x + p2.x) / 2; const cy = (p1.y + p2.y) / 2; const ad = Math.abs(p1.x - p2.x) * 0.25 + 15; const cp = { x: cx, y: cy + ad };
-                    poseCtx.beginPath(); poseCtx.moveTo(p1.x, p1.y); poseCtx.quadraticCurveTo(cp.x, cp.y, p2.x, p2.y); poseCtx.strokeStyle = '#00FFFF'; poseCtx.lineWidth = 8; poseCtx.stroke();
-                    poseCtx.fillStyle = '#FF1493'; poseCtx.beginPath(); poseCtx.arc(p1.x, p1.y, 8, 0, 2 * Math.PI); poseCtx.fill(); poseCtx.beginPath(); poseCtx.arc(p2.x, p2.y, 8, 0, 2 * Math.PI); poseCtx.fill();
-                }
-             } else { if(!results.poseLandmarks) {/*No pose*/} else {console.warn("POSE_LANDMARKS undefined");} }
-             poseCtx.restore();
-        }
+        function onPoseResults(results) { if (!gameActuallyStarted || isGameOver) { playerMoveDirection = 0; return; } poseCtx.save(); poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height); poseCtx.scale(-1, 1); poseCtx.translate(-poseCanvas.width, 0); playerMoveDirection = 0; if (results.poseLandmarks && typeof POSE_LANDMARKS !== 'undefined') { const l = results.poseLandmarks; const w = l[POSE_LANDMARKS.LEFT_WRIST]; const r = l[POSE_LANDMARKS.RIGHT_WRIST]; if (w && r && w.visibility > 0.5 && r.visibility > 0.5) { const y = w.y; const Y = r.y; const d = Y - y; if (d > HAND_TILT_THRESHOLD) { playerMoveDirection = 1; } else if (d < -HAND_TILT_THRESHOLD) { playerMoveDirection = -1; } const p1 = { x: r.x * poseCanvas.width, y: Y * poseCanvas.height }; const p2 = { x: w.x * poseCanvas.width, y: y * poseCanvas.height }; const c = (p1.x + p2.x) / 2; const C = (p1.y + p2.y) / 2; const a = Math.abs(p1.x - p2.x) * 0.25 + 15; const P = { x: c, y: C + a }; poseCtx.beginPath(); poseCtx.moveTo(p1.x, p1.y); poseCtx.quadraticCurveTo(P.x, P.y, p2.x, p2.y); poseCtx.strokeStyle = '#00FFFF'; poseCtx.lineWidth = 5; poseCtx.stroke(); poseCtx.fillStyle = '#FF00FF'; poseCtx.beginPath(); poseCtx.arc(p1.x, p1.y, 6, 0, 2 * Math.PI); poseCtx.fill(); poseCtx.beginPath(); poseCtx.arc(p2.x, p2.y, 6, 0, 2 * Math.PI); poseCtx.fill(); } } else { if (!results.poseLandmarks) {} else { console.warn("POSE_LANDMARKS undefined"); } } poseCtx.restore(); }
 
-        // --- Inicialización Mediapipe y Cámara ---
-        const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, enableSegmentation: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.7 });
-        pose.onResults(onPoseResults);
-        const camera = new Camera(videoElement, { onFrame: async () => { if(!isGameOver) await pose.send({ image: videoElement }); }, width: WEBCAM_PROCESSING_WIDTH, height: WEBCAM_PROCESSING_HEIGHT });
+        // --- Inicialización Mediapipe y Cámara (Sin cambios) ---
+        const pose = new Pose({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`}); pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, enableSegmentation: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.7 }); pose.onResults(onPoseResults); const camera = new Camera(videoElement, { onFrame: async () => { if(gameActuallyStarted && !isGameOver) await pose.send({ image: videoElement }); }, width: WEBCAM_PROCESSING_WIDTH, height: WEBCAM_PROCESSING_HEIGHT });
 
-        // --- Iniciar Todo ---
-        function startGame() {
-            console.log("Iniciando recursos..."); loadingIndicator.textContent = "Cargando Sprites Coches..."; loadingIndicator.style.display = 'flex';
-            carSprites.onload = () => {
-                console.log("Sprites coches cargados."); spritesLoaded = true; numCarSprites = Math.floor(carSprites.width / SPRITE_WIDTH) * Math.floor(carSprites.height / SPRITE_HEIGHT); console.log(`Detectados ${numCarSprites} sprites coches.`);
-                if (numCarSprites < 3) { console.error(`Se requieren 3+ sprites coches`); loadingIndicator.textContent = `Error: Se requieren 3+ sprites coches.`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; return; }
-                loadingIndicator.textContent = "Cargando Sprites Escenario...";
-                scenerySprites.onload = () => {
-                    console.log("Sprites escenario cargados."); sceneryLoaded = true; loadingIndicator.textContent = "Iniciando Cámara...";
-                    camera.start()
-                        .then(() => { console.log("Cámara iniciada."); initRoadLines(); resetGame(); })
-                        .catch(err => { console.error("Error cámara:", err); loadingIndicator.textContent = `Error cámara: ${err.message}.`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; });
-                };
-                scenerySprites.onerror = () => { console.error("Error cargando sprites escenario:", SCENERY_SPRITE_SHEET_SRC); loadingIndicator.textContent = `Error cargando ${SCENERY_SPRITE_SHEET_SRC}.`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; }
-                scenerySprites.src = SCENERY_SPRITE_SHEET_SRC;
-            };
-            carSprites.onerror = () => { console.error("Error cargando sprites coches:", SPRITE_SHEET_SRC); loadingIndicator.textContent = `Error cargando ${SPRITE_SHEET_SRC}.`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; }
-            carSprites.src = SPRITE_SHEET_SRC;
-        }
-        // MODIFICADO: Listener de carga también llama a ajustarPosicionGameOver
+        // --- Iniciar Recursos y Preparar Juego (Sin cambios) ---
+        function loadGameAssetsAndPrepare() { console.log("Loading assets..."); loadingIndicator.textContent = "LOADING SPRITES..."; loadingIndicator.style.display = 'flex'; let a = 0; const t = 2; function l() { a++; if (a === t) { console.log("Sprites loaded."); loadingIndicator.textContent = "INIT CAMERA..."; camera.start().then(() => { console.log("Camera started."); loadingIndicator.style.display = 'none'; }).catch(e => { console.error("Camera Error:", e); loadingIndicator.textContent = `CAMERA ERROR: ${e.message}.`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; }); } } function v() { numCarSprites = Math.floor(carSprites.width / SPRITE_WIDTH) * Math.floor(carSprites.height / SPRITE_HEIGHT); console.log(`${numCarSprites} car sprites detected.`); if (SPRITES_PER_ROW < 2) throw new Error(`SPRITES_PER_ROW must be >= 2.`); if (numCarSprites < SPRITES_PER_ROW) throw new Error(`Required ${SPRITES_PER_ROW} car sprites. Found: ${numCarSprites}.`); if (PLAYER_CAR_SPRITE_INDEX < 0 || PLAYER_CAR_SPRITE_INDEX >= SPRITES_PER_ROW) throw new Error(`PLAYER_CAR_SPRITE_INDEX (${PLAYER_CAR_SPRITE_INDEX}) out of range [0, ${SPRITES_PER_ROW - 1}].`); return true; } carSprites.onload = () => { try { v(); console.log("Car sprites OK."); spritesLoaded = true; l(); } catch (e) { console.error("Car Sprite Error:", e.message); loadingIndicator.textContent = e.message; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; } }; carSprites.onerror = () => { console.error("Error loading:", SPRITE_SHEET_SRC); loadingIndicator.textContent = `ERROR LOADING ${SPRITE_SHEET_SRC}`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; }; scenerySprites.onload = () => { console.log("Scenery sprites OK."); sceneryLoaded = true; l(); }; scenerySprites.onerror = () => { console.error("Error loading:", SCENERY_SPRITE_SHEET_SRC); loadingIndicator.textContent = `ERROR LOADING ${SCENERY_SPRITE_SHEET_SRC}`; loadingIndicator.style.backgroundColor = "rgba(220, 53, 69, 0.9)"; }; carSprites.src = SPRITE_SHEET_SRC; scenerySprites.src = SCENERY_SPRITE_SHEET_SRC; }
+
+        // --- Evento de carga inicial ---
         window.addEventListener('load', () => {
-            startGame();
-            // Asegurar que la posición inicial de Game Over es correcta
-            ajustarPosicionGameOver();
-        });
-         // Ajustar en resize por si el usuario sale de fullscreen cambiando tamaño ventana
-        window.addEventListener('resize', ajustarPosicionGameOver);
+            highScores = loadHighScores();
+            console.log("Initial high scores loaded:", highScores);
+            displayHighScores(highScores, highScoreListElement); // Mostrar scores normales al inicio
+            startGameButton.style.display = 'inline-block'; // Asegurar Start visible al inicio
 
+            highScoreModalInstance = new bootstrap.Modal(highScoreModalElement);
+            highScoreModalInstance.show(); // Mostrar modal inicial
+
+            loadGameAssetsAndPrepare();
+            ajustarPosicionGameOver(); // Ajustar posición del (oculto) input container
+
+            // <<< ELIMINADO: Listener 'hidden.bs.modal' ya no es necesario >>>
+        });
+
+        // --- Listener para el botón Start Game del modal ---
+        // Este listener ahora se activa tanto al inicio como después de ver los scores post-juego
+        startGameButton.addEventListener('click', () => {
+            console.log("Start Button clicked!");
+            // El modal se cierra por data-bs-dismiss="modal"
+            // Siempre llamamos a resetGame para (re)iniciar
+            if (!spritesLoaded || !sceneryLoaded) {
+                console.warn("Assets not ready, waiting...");
+                loadingIndicator.textContent = "WAITING ASSETS...";
+                loadingIndicator.style.display = 'flex';
+                setTimeout(() => {
+                    if (spritesLoaded && sceneryLoaded) { resetGame(); }
+                    else { console.error("Assets still not ready."); loadingIndicator.textContent = "ASSET LOAD FAILED"; }
+                }, 1000);
+            } else {
+                 resetGame();
+            }
+        });
+
+        // Ajustar en resize (Sin cambios)
+        window.addEventListener('resize', ajustarPosicionGameOver);
 
     </script>
 </body>
