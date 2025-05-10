@@ -13,6 +13,7 @@ Este proyecto es un juego de carreras 2D estilo arcade 👾 donde controlas un c
 ![Captura de Pantalla del Proyecto](screenshot.png)
 
 Puedes probar una **[Demo en Vivo aquí](https://soyunomas.github.io/mediapipe-pose-driver-game/index.html)**.
+Optimizado: **[Demo en Vivo aquí](https://soyunomas.github.io/mediapipe-pose-driver-game/index2.html)**.
 
 ## ✨ Características Principales
 
